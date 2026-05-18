@@ -3,7 +3,7 @@ from tkinter import messagebox
 import importlib
 
 from config import *
-from ui.lab_window import LabWindow
+from ui.components.lab_window import LabWindow
 
 
 def launch_lab(parent, lab_data):

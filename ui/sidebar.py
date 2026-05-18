@@ -63,7 +63,6 @@ class Sidebar(tk.Frame):
 
         nav_items = [
             ("◉  Dashboard", "dashboard"),
-            ("◎  Laboratories", "labs"),
             ("◈  About", "about"),
         ]
 

@@ -3,7 +3,6 @@ import tkinter as tk
 from config import *
 from ui.sidebar import Sidebar
 from ui.dashboard_view import DashboardView
-from ui.labs_view import LabsView
 from ui.about_view import AboutView
 from core.navigation import NavigationManager
 
@@ -11,13 +10,14 @@ from core.navigation import NavigationManager
 class DSPApplication(tk.Tk):
     def __init__(self):
         super().__init__()
+        
+        self.state("zoomed")  # Start maximized
 
         self.title("DSP Final Project  ·  Digital Signal Processing")
         self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.minsize(900, 600)
         self.configure(bg=BG_DARK)
 
-        self._center_window()
 
         self.content = tk.Frame(self, bg=BG_DARK)
         self.content.pack(side="right", fill="both", expand=True)
@@ -27,7 +27,6 @@ class DSPApplication(tk.Tk):
 
         self.views = {
             "dashboard": DashboardView(self.content),
-            "labs": LabsView(self.content),
             "about": AboutView(self.content),
         }
 
