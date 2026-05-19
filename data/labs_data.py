@@ -21,8 +21,8 @@ LABS = [
     },
     {
         "id": "03",
-        "title": "Digital Filters",
-        "desc": "Design and analyze lowpass, highpass, and bandpass digital filters in the time and frequency domain.",
+        "title": "Audio Filtering",
+        "desc": "Apply Butterworth low-pass, high-pass, band-pass, and band-stop filters to audio signals.",
         "icon": "⧖",
         "color": "#818CF8",
         "module": "lab3_filters",
@@ -30,35 +30,27 @@ LABS = [
     {
         "id": "04",
         "title": "Z-Transform",
-        "desc": "Compute Z-transforms, analyze poles and zeros, and examine system stability and causality.",
+        "desc": "Compute Z-transform expressions from discrete input sequences.",
         "icon": "Z",
         "color": "#A78BFA",
         "module": "lab4_ztransform",
     },
     {
-        "id": "05",
-        "title": "Manual DFT & FFT",
+        "id": "05 & 06",
+        "title": "DFT & FFT",
         "desc": (
-            "Perform handwritten-style DFT and FFT solving "
-            "using input sequences, twiddle factors, "
-            "sine, and cosine theta computations."
+            "Compute the Discrete Fourier Transform of an input "
+            "sequence and visualize its frequency-domain "
+            "representation."
         ),
         "icon": "∑",
         "color": "#22C55E",
-        "module": "lab5",
-    },
-    {
-        "id": "06",
-        "title": "DFT in Python",
-        "desc": "Implement the Discrete Fourier Transform manually and verify results against NumPy's FFT.",
-        "icon": "∿",
-        "color": "#34D399",
-        "module": "lab6_dft",
+        "module": "lab5_6_dft",
     },
     {
         "id": "07",
-        "title": "Windowing Functions",
-        "desc": "Apply and compare Hann, Hamming, Blackman, and Kaiser windows on signal spectra.",
+        "title": "Window Functions & FFT",
+        "desc": "Apply and compare Rectangular, Hamming, Hanning, and Blackman windows on signal spectra.",
         "icon": "⌇",
         "color": "#FBBF24",
         "module": "lab7_windowing",
