@@ -55,12 +55,4 @@ LABS = [
         "color": "#FBBF24",
         "module": "lab7_windowing",
     },
-    {
-        "id": "08",
-        "title": "IIR & FIR Filters",
-        "desc": "Design and compare Infinite and Finite Impulse Response filters with scipy.signal.",
-        "icon": "⊶",
-        "color": "#F87171",
-        "module": "lab8_iirfir",
-    },
 ]

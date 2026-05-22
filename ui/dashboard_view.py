@@ -72,7 +72,7 @@ class DashboardView(tk.Frame):
 
         StatCard(
             stats,
-            "8",
+            "7",
             "Labs Included"
         ).pack(
             side="left",

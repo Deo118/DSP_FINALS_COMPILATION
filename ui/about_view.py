@@ -68,7 +68,7 @@ class AboutView(tk.Frame):
                     "This application is the final project output "
                     "for Digital Signal Processing (DSP). "
                     "It compiles all laboratory activities "
-                    "(Labs 1–8) into a single executable "
+                    "(Labs 1–7) into a single executable "
                     "Python desktop application.\n\n"
                     "Each lab opens in its own dedicated window "
                     "with embedded visualization support "
@@ -98,8 +98,7 @@ class AboutView(tk.Frame):
                     "Lab 04 — Z-Transform\n"
                     "Lab 05 — Manual DFT & FFT\n"
                     "Lab 06 — DFT in Python\n"
-                    "Lab 07 — Windowing Functions\n"
-                    "Lab 08 — IIR & FIR Filters"
+                    "Lab 07 — Windowing Functions"
                 )
             ),
 
