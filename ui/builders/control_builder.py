@@ -66,13 +66,32 @@ def create_file_picker(parent, label_text, filetypes, command=None):
     path_var = tk.StringVar(value="No file selected")
 
     entry = ttk.Entry(row, textvariable=path_var, state="readonly")
-    entry.pack(side="left", fill="x", expand=True)   # ipady removed
+    entry.pack(side="left", fill="x", expand=True)
+
+    def _get_top_window(widget):
+        """Walk up the widget tree to find the nearest Toplevel or Tk root."""
+        w = widget
+        while w is not None:
+            if isinstance(w, (tk.Toplevel, tk.Tk)):
+                return w
+            w = w.master
+        return None
 
     def browse():
-        path = filedialog.askopenfilename(filetypes=filetypes)
+        # Always pass parent= so the dialog stays on top of the lab window
+        # and focus returns to it after selection — not the root window.
+        top = _get_top_window(container)
+        path = filedialog.askopenfilename(
+            parent=top,
+            filetypes=filetypes,
+        )
         if not path:
             return
         path_var.set(path)
+        # Bring the lab window back to front after dialog closes
+        if top is not None:
+            top.lift()
+            top.focus_force()
         if command:
             command(path)
 

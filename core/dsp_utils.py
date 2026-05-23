@@ -112,22 +112,61 @@ def load_audio_file(path):
     path_lower = path.lower()
 
     if path_lower.endswith(".wav"):
+        # WAV: soundfile is reliable on all platforms
         import soundfile as sf
-
         audio, sample_rate = sf.read(path)
+
     elif path_lower.endswith(".mp3"):
+        # MP3 strategy 1: pydub (works on Windows without ffmpeg DLL fuss)
+        loaded = False
         try:
-            import soundfile as sf
-
-            audio, sample_rate = sf.read(path)
+            from pydub import AudioSegment
+            import numpy as np
+            seg = AudioSegment.from_mp3(path)
+            sample_rate = seg.frame_rate
+            samples = np.array(seg.get_array_of_samples(), dtype=np.float32)
+            # Normalise to [-1.0, 1.0]
+            samples = samples / (2 ** (8 * seg.sample_width - 1))
+            # Mix down to mono if stereo
+            if seg.channels == 2:
+                samples = samples.reshape(-1, 2).mean(axis=1)
+            audio = samples
+            loaded = True
         except Exception:
-            import librosa
+            pass
 
-            audio, sample_rate = librosa.load(path, sr=None, mono=True)
+        # MP3 strategy 2: librosa (needs ffmpeg in PATH)
+        if not loaded:
+            try:
+                import librosa
+                audio, sample_rate = librosa.load(path, sr=None, mono=True)
+                loaded = True
+            except Exception:
+                pass
+
+        # MP3 strategy 3: soundfile with libsndfile MP3 support (rare but possible)
+        if not loaded:
+            try:
+                import soundfile as sf
+                audio, sample_rate = sf.read(path)
+                loaded = True
+            except Exception:
+                pass
+
+        if not loaded:
+            raise RuntimeError(
+                "Could not decode MP3 file.\n\n"
+                "Please install pydub:  pip install pydub\n"
+                "pydub uses the built-in Windows MP3 codec — no extra downloads needed.\n\n"
+                "Alternatively, convert your file to .wav and try again."
+            )
     else:
         raise ValueError("Supported formats: .wav and .mp3")
 
-    if len(audio.shape) > 1:
+    # Ensure 1-D mono
+    import numpy as np
+    audio = np.array(audio)
+    if audio.ndim > 1:
         audio = audio[:, 0]
 
     return audio.astype(float), int(sample_rate)
