@@ -64,11 +64,27 @@ def launch(parent):
         if canvas_ref["canvas"]:
             canvas_ref["canvas"].get_tk_widget().destroy()
 
-        fig  = Figure(figsize=(12, 4), dpi=100, facecolor=BG_CARD)
+        fig = Figure(
+            figsize=(10, 5),
+            dpi=100,
+            facecolor=BG_CARD,
+            constrained_layout=True,
+        )
+
         axes = fig.subplots(1, 3)
-        cv   = FigureCanvasTkAgg(fig, master=graph_frame)
-        cv.get_tk_widget().pack(fill="both", expand=True)
+
+        cv = FigureCanvasTkAgg(fig, master=graph_frame)
+        widget = cv.get_tk_widget()
+        widget.pack(fill="both", expand=True)
+
         canvas_ref["canvas"] = cv
+
+        def _resize(_event=None):
+            if canvas_ref["canvas"] is not None:
+                canvas_ref["canvas"].draw_idle()
+
+        graph_frame.bind("<Configure>", _resize)
+
         return fig, axes, cv
 
     def analyze():
@@ -119,19 +135,44 @@ def launch(parent):
 
         stem_with_line(axes[0], n,    x,       "#00D4FF", "#0099FF")
         stem_with_line(axes[1], n,    xw,      "#00D4FF", "#0099FF")
-        stem_with_line(axes[2], freq, np.abs(X),  "#00D4FF", "#0099FF", label="Original")
-        stem_with_line(axes[2], freq, np.abs(Xw), "#FBBF24", "#E6A800", label="Windowed")
 
-        legend = axes[2].legend(facecolor=BG_CARD, edgecolor=BORDER, fontsize=8)
+        stem_with_line(
+            axes[2],
+            freq,
+            np.abs(X),
+            "#00D4FF",
+            "#0099FF",
+            label="Original"
+        )
+
+        stem_with_line(
+            axes[2],
+            freq,
+            np.abs(Xw),
+            "#FBBF24",
+            "#E6A800",
+            label="Windowed"
+        )
+
+        legend = axes[2].legend(
+            facecolor=BG_CARD,
+            edgecolor=BORDER,
+            fontsize=8
+        )
+
         for text in legend.get_texts():
             text.set_color(TEXT_WHITE)
 
-        fig.suptitle(f"{window_name} Window Analysis", color=TEXT_WHITE, fontsize=13, y=1.02)
-        fig.tight_layout(pad=1.5)
         cv.draw_idle()
 
     btn_frame = tk.Frame(control_footer, bg=BG_CARD)
     btn_frame.pack(fill="both", expand=True)
-    add_footer_button(btn_frame, "Analyze", analyze, padx=(0, 0))
+
+    add_footer_button(
+        btn_frame,
+        "Analyze",
+        analyze,
+        padx=(0, 0)
+    )
 
     analyze()

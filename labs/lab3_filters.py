@@ -81,14 +81,9 @@ def launch(parent):
 
     def _stop_playback():
         playback["stop_flag"] = True
-        if playback["stream"] is not None:
-            try:
-                playback["stream"].stop()
-                playback["stream"].close()
-            except Exception:
-                pass
-            playback["stream"] = None
+
         playback["playing_idx"] = None
+
         _reset_play_buttons()
 
     def _reset_play_buttons():
@@ -101,6 +96,13 @@ def launch(parent):
     def _play_audio(idx):
         import numpy as np
         import sounddevice as sd
+        
+        if (
+            playback["thread"] is not None
+            and playback["thread"].is_alive()
+            and playback["playing_idx"] is None
+        ):
+            return
 
         if playback["playing_idx"] == idx:
             _stop_playback()
@@ -126,29 +128,71 @@ def launch(parent):
         CHUNK = 4096
 
         def _stream_thread():
+            import traceback
+
+            stream = None
+
             try:
+                print("[DEBUG] Creating output stream")
+
                 stream = sd.OutputStream(
                     samplerate=sr,
                     channels=1,
                     dtype="float32",
                 )
+
                 playback["stream"] = stream
+
+                print("[DEBUG] Starting stream")
+
                 stream.start()
+
                 pos = 0
-                while pos < len(audio_f32) and not playback["stop_flag"]:
+
+                while pos < len(audio_f32):
+
+                    if playback["stop_flag"]:
+                        print("[DEBUG] Stop flag detected")
+                        break
+
                     chunk = audio_f32[pos: pos + CHUNK]
+
                     stream.write(chunk)
+
                     pos += CHUNK
-                stream.stop()
-                stream.close()
+
+                print("[DEBUG] Playback loop finished")
+
             except Exception:
-                pass
+                print("[DEBUG] Playback thread exception")
+                traceback.print_exc()
+
             finally:
-                playback["stream"]      = None
+                print("[DEBUG] Cleaning up stream")
+
+                try:
+                    if stream is not None:
+                        stream.abort()
+                except Exception:
+                    traceback.print_exc()
+
+                try:
+                    if stream is not None:
+                        stream.close()
+                except Exception:
+                    traceback.print_exc()
+
+                playback["stream"] = None
                 playback["playing_idx"] = None
+
                 graph_frame.after(0, _reset_play_buttons)
 
-        t = threading.Thread(target=_stream_thread, daemon=True)
+                print("[DEBUG] Playback thread exit")
+        t = threading.Thread(
+            target=_stream_thread,
+            daemon=True,
+        )
+
         playback["thread"] = t
         t.start()
 
@@ -164,11 +208,23 @@ def launch(parent):
             return canvas_ref["fig"], canvas_ref["axes"], canvas_ref["canvas"]
 
         placeholder.pack_forget()
-        fig  = Figure(figsize=(9, 9), dpi=80, facecolor=BG_CARD)
-        axes = fig.subplots(5, 1)
+        fig = Figure(
+            figsize=(10, 6),
+            dpi=80,
+            facecolor=BG_CARD,
+            constrained_layout=True,
+        )
+        axes = fig.subplots(5, 1, sharex=True)
         cv   = FigureCanvasTkAgg(fig, master=graph_frame)
         cv.get_tk_widget().pack(fill="both", expand=True)
         canvas_ref.update({"canvas": cv, "fig": fig, "axes": axes})
+
+        def _resize(_event=None):
+            if canvas_ref["canvas"] is not None:
+                canvas_ref["canvas"].draw_idle()
+
+        graph_frame.bind("<Configure>", _resize)
+
         return fig, axes, cv
 
     def _build_playback_bar(audio_list):
@@ -178,7 +234,8 @@ def launch(parent):
             try:
                 playback_bar_ref["frame"].destroy()
             except Exception:
-                pass
+                import traceback
+                traceback.print_exc()
 
         bar = tk.Frame(graph_frame, bg=BG_DARK)
         bar.pack(fill="x", pady=(6, 0))
@@ -188,12 +245,12 @@ def launch(parent):
 
         for idx, (title, color) in enumerate(zip(PLOT_TITLES, PLOT_COLORS)):
             col_frame = tk.Frame(bar, bg=BG_DARK)
-            col_frame.pack(side="left", expand=True, fill="x", padx=4)
+            col_frame.pack(side="left", expand=True, fill="both", padx=2)
 
             tk.Label(
                 col_frame,
                 text=title,
-                font=("Helvetica", 8),
+                font=("Helvetica", 7),
                 bg=BG_DARK,
                 fg=color,
                 anchor="center",
@@ -311,14 +368,18 @@ def launch(parent):
                 return
 
             fig, axes, cv = _ensure_canvas()
-            for ax, sig, title, color in zip(
+            for idx, (ax, sig, title, color) in enumerate(zip(
                 axes, result["plot_signals"], PLOT_TITLES, PLOT_COLORS
-            ):
+            )):
                 ax.clear()
-                style_axes(ax, title=title, xlabel="Time (s)", ylabel="Amplitude")
+                style_axes(
+                    ax,
+                    title=title,
+                    xlabel="Time (s)" if idx == len(axes) - 1 else "",
+                    ylabel="Amp",
+                )
                 ax.plot(result["time"], sig, color=color, linewidth=0.6)
 
-            fig.tight_layout(pad=1.2)
             cv.draw_idle()
 
             _build_playback_bar(result["audio_list"])
