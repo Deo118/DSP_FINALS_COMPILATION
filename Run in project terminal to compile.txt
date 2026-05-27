@@ -1,5 +1,7 @@
 Run this in the project terminal to compile into one main.exe file:
-pyinstaller --onefile --windowed `
+pyinstaller --noconfirm --clean --onefile --windowed `
+  --name "AjDDO" `
+  --icon=assets/icon.ico `
   --hidden-import=labs `
   --hidden-import=labs.lab1_sampling `
   --hidden-import=labs.lab2 `
@@ -13,12 +15,22 @@ pyinstaller --onefile --windowed `
   --hidden-import=soundfile `
   --hidden-import=librosa `
   --hidden-import=pydub `
+  --hidden-import=PIL `
+  --hidden-import=PIL._tkinter_finder `
+  --collect-submodules labs `
+  --collect-submodules ui `
+  --collect-submodules core `
   --collect-all=numpy `
   --collect-all=matplotlib `
+  --collect-all=scipy `
+  --collect-all=PIL `
   main.py
 
+
 Run to bypass bad path configurations and find your official Python installation:
-  py -m PyInstaller --onefile --windowed `
+py -m pyinstaller --noconfirm --clean --onefile --windowed `
+  --name "AjDDO" `
+  --icon=assets/icon.ico `
   --hidden-import=labs `
   --hidden-import=labs.lab1_sampling `
   --hidden-import=labs.lab2 `
@@ -32,6 +44,17 @@ Run to bypass bad path configurations and find your official Python installation
   --hidden-import=soundfile `
   --hidden-import=librosa `
   --hidden-import=pydub `
+  --hidden-import=PIL `
+  --hidden-import=PIL._tkinter_finder `
+  --collect-submodules labs `
+  --collect-submodules ui `
+  --collect-submodules core `
   --collect-all=numpy `
   --collect-all=matplotlib `
+  --collect-all=scipy `
+  --collect-all=PIL `
   main.py
+
+if already compiled, run this first before commiting to github and/or running any of the above:
+Remove-Item -Recurse -Force build,dist -ErrorAction SilentlyContinue
+Remove-Item -Force *.spec -ErrorAction SilentlyContinue

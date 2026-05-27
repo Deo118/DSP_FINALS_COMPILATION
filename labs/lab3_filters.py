@@ -15,7 +15,7 @@ def launch(parent):
     shell = create_lab_body(
         parent,
         icon="⧖",
-        title="Audio Filtering",
+        title="Lab 3 — Audio Filtering",
         subtitle=(
             "Apply Butterworth low-pass, high-pass, band-pass, "
             "and band-stop filters to an audio signal."
@@ -69,22 +69,28 @@ def launch(parent):
     )
     placeholder.pack(expand=True)
 
-    # ── Playback state ────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────
+    # Playback state
+    # ─────────────────────────────────────────────────────────────────────
     playback = {
-        "stream":      None,   # sounddevice OutputStream
-        "thread":      None,
-        "stop_flag":   False,
-        "playing_idx": None,   # which filter is playing
-        "play_btns":   [],     # list of button widgets
-        "audio_data":  [],     # list of (audio_array, sample_rate)
+        "thread":         None,
+        "stop_flag":      False,
+        "playing_idx":    None,
+        "play_btns":      [],
+        "audio_data":     [],
+        "total_samples":  0,
+        "sample_rate":    44100,
+        "generation":     0,
     }
 
-    def _stop_playback():
-        playback["stop_flag"] = True
-
-        playback["playing_idx"] = None
-
-        _reset_play_buttons()
+    # ── Helpers ───────────────────────────────────────────────────────────
+    def _kill_all_audio():
+        """Hard-stop every sounddevice stream (kills overlapping audio)."""
+        try:
+            import sounddevice as sd
+            sd.stop()
+        except Exception:
+            pass
 
     def _reset_play_buttons():
         for btn in playback["play_btns"]:
@@ -93,111 +99,96 @@ def launch(parent):
             except Exception:
                 pass
 
-    def _play_audio(idx):
-        import numpy as np
-        import sounddevice as sd
-        
-        if (
-            playback["thread"] is not None
-            and playback["thread"].is_alive()
-            and playback["playing_idx"] is None
-        ):
-            return
-
-        if playback["playing_idx"] == idx:
-            _stop_playback()
-            return
-
-        _stop_playback()
-        playback["stop_flag"]   = False
-        playback["playing_idx"] = idx
-
-        # Highlight the active play button
+    def _apply_button_states(active_idx):
         for i, btn in enumerate(playback["play_btns"]):
             try:
-                if i == idx:
+                if i == active_idx:
                     btn.config(text="■  Stop", bg="#818CF8", fg="#000000")
                 else:
                     btn.config(text="▶  Play", bg="#2B3445", fg=TEXT_WHITE)
             except Exception:
                 pass
 
+    def _stop_playback(reset_buttons=True):
+        """Signal current thread to stop; kill audio hardware immediately."""
+        playback["stop_flag"]   = True
+        playback["playing_idx"] = None
+        playback["generation"] += 1
+        _kill_all_audio()
+        if reset_buttons:
+            _reset_play_buttons()
+
+
+    # ── Core play function ────────────────────────────────────────────────
+    def _play_audio(idx, start_sample=None):
+        import sounddevice as sd
+
+        if not playback["audio_data"]:
+            return
+
+        if (
+            playback["playing_idx"] == idx
+            and start_sample is None
+        ):
+            _stop_playback(reset_buttons=True)
+            return
+
+        # Stop whatever is playing RIGHT NOW (including hardware)
+        _stop_playback(reset_buttons=False)
+
+        # ── Wait for the old stream thread to actually exit ──────────────────
+        old_thread = playback["thread"]
+        if old_thread is not None and old_thread.is_alive():
+            old_thread.join(timeout=0.5)
+        # ─────────────────────────────────────────────────────────────────────
+
+        if start_sample is None:
+            start_sample = 0
+
+        # --- Set up new session BEFORE starting thread ---
+        playback["stop_flag"]   = False
+        playback["playing_idx"] = idx
+        my_gen = playback["generation"]   
+
+        # Visuals: update immediately so button shows "Stop" right away
+        _apply_button_states(idx)
+
         audio, sr = playback["audio_data"][idx]
         audio_f32 = audio.astype("float32")
-
-        CHUNK = 4096
+        if len(audio_f32) == 0:
+            return
+        CHUNK     = 2048
 
         def _stream_thread():
             import traceback
-
-            stream = None
+            pos = max(0, min(int(start_sample), len(audio_f32) - 1))
 
             try:
-                print("[DEBUG] Creating output stream")
-
-                stream = sd.OutputStream(
-                    samplerate=sr,
-                    channels=1,
-                    dtype="float32",
-                )
-
-                playback["stream"] = stream
-
-                print("[DEBUG] Starting stream")
-
-                stream.start()
-
-                pos = 0
-
-                while pos < len(audio_f32):
-
-                    if playback["stop_flag"]:
-                        print("[DEBUG] Stop flag detected")
-                        break
-
-                    chunk = audio_f32[pos: pos + CHUNK]
-
-                    stream.write(chunk)
-
-                    pos += CHUNK
-
-                print("[DEBUG] Playback loop finished")
-
+                # Open a NEW stream for this session
+                with sd.OutputStream(samplerate=sr, channels=1, dtype="float32") as stream:
+                    stream.start()
+                    while pos < len(audio_f32):
+                        if playback["stop_flag"]:
+                            break
+                        chunk = audio_f32[pos: pos + CHUNK]
+                        stream.write(chunk)
+                        pos  += CHUNK
             except Exception:
-                print("[DEBUG] Playback thread exception")
                 traceback.print_exc()
 
-            finally:
-                print("[DEBUG] Cleaning up stream")
+            # Clean up UI only if no newer session has taken over
+            def _maybe_reset():
+                if playback["generation"] == my_gen:
+                    playback["playing_idx"] = None
+                    _reset_play_buttons()
+            graph_frame.after(0, _maybe_reset)
 
-                try:
-                    if stream is not None:
-                        stream.abort()
-                except Exception:
-                    traceback.print_exc()
-
-                try:
-                    if stream is not None:
-                        stream.close()
-                except Exception:
-                    traceback.print_exc()
-
-                playback["stream"] = None
-                playback["playing_idx"] = None
-
-                graph_frame.after(0, _reset_play_buttons)
-
-                print("[DEBUG] Playback thread exit")
-        t = threading.Thread(
-            target=_stream_thread,
-            daemon=True,
-        )
-
+        t = threading.Thread(target=_stream_thread, daemon=True)
         playback["thread"] = t
         t.start()
 
-    # ── Canvas & playback bar ─────────────────────────────────────────────
-    canvas_ref = {"canvas": None, "fig": None, "axes": None}
+    # ── Canvas ────────────────────────────────────────────────────────────
+    canvas_ref       = {"canvas": None, "fig": None, "axes": None}
     playback_bar_ref = {"frame": None}
 
     def _ensure_canvas():
@@ -208,73 +199,82 @@ def launch(parent):
             return canvas_ref["fig"], canvas_ref["axes"], canvas_ref["canvas"]
 
         placeholder.pack_forget()
+
         fig = Figure(
             figsize=(10, 6),
             dpi=80,
             facecolor=BG_CARD,
             constrained_layout=True,
         )
+
         axes = fig.subplots(5, 1, sharex=True)
-        cv   = FigureCanvasTkAgg(fig, master=graph_frame)
-        cv.get_tk_widget().pack(fill="both", expand=True)
-        canvas_ref.update({"canvas": cv, "fig": fig, "axes": axes})
 
-        def _resize(_event=None):
-            if canvas_ref["canvas"] is not None:
-                canvas_ref["canvas"].draw_idle()
+        cv = FigureCanvasTkAgg(fig, master=graph_frame)
 
-        graph_frame.bind("<Configure>", _resize)
+        cv.get_tk_widget().pack(
+            fill="both",
+            expand=True
+        )
+
+        canvas_ref.update({
+            "canvas": cv,
+            "fig": fig,
+            "axes": axes,
+        })
+
+        graph_frame.bind(
+            "<Configure>",
+            lambda e: cv.draw_idle()
+        )
 
         return fig, axes, cv
 
-    def _build_playback_bar(audio_list):
-        """Row of Play buttons — one per filter output."""
-        # Destroy old bar if it exists
+    def _build_playback_bar(audio_list, sample_rate):
         if playback_bar_ref["frame"] is not None:
             try:
                 playback_bar_ref["frame"].destroy()
             except Exception:
-                import traceback
-                traceback.print_exc()
+                pass
 
         bar = tk.Frame(graph_frame, bg=BG_DARK)
         bar.pack(fill="x", pady=(6, 0))
         playback_bar_ref["frame"] = bar
-        playback["play_btns"] = []
-        playback["audio_data"] = audio_list
+
+        playback["play_btns"]      = []
+        playback["audio_data"]     = audio_list
+        playback["sample_rate"]    = sample_rate
+
+        if audio_list:
+            playback["total_samples"] = len(audio_list[0][0])
 
         for idx, (title, color) in enumerate(zip(PLOT_TITLES, PLOT_COLORS)):
             col_frame = tk.Frame(bar, bg=BG_DARK)
-            col_frame.pack(side="left", expand=True, fill="both", padx=2)
+            col_frame.pack(side="left", expand=True, fill="both", padx=2, pady=4)
 
-            tk.Label(
-                col_frame,
-                text=title,
-                font=("Helvetica", 7),
-                bg=BG_DARK,
-                fg=color,
-                anchor="center",
-            ).pack(fill="x")
+            tk.Label(col_frame, text=title,
+                     font=("Helvetica", 7), bg=BG_DARK, fg=color,
+                     anchor="center").pack(fill="x")
+
+            
 
             btn = tk.Button(
-                col_frame,
-                text="▶  Play",
+                col_frame, text="▶  Play",
                 font=("Helvetica", 9, "bold"),
-                bg="#2B3445",
-                fg=TEXT_WHITE,
-                activebackground="#3A465C",
-                activeforeground=TEXT_WHITE,
-                relief="flat",
-                bd=0,
-                cursor="hand2",
-                padx=8,
-                pady=5,
+                bg="#2B3445", fg=TEXT_WHITE,
+                activebackground="#3A465C", activeforeground=TEXT_WHITE,
+                relief="flat", bd=0, cursor="hand2", padx=8, pady=5,
                 command=lambda i=idx: _play_audio(i),
             )
             btn.pack(fill="x")
-            playback["play_btns"].append(btn)
+            playback["play_btns"].append(btn)   
 
-    # ── Heavy work (background thread) ───────────────────────────────────
+    # ── Stop audio when leaving this tab / destroying the frame ──────────
+    def _on_destroy(event):
+        if event.widget is graph_frame:
+            _stop_playback(reset_buttons=False)
+    graph_frame.bind("<Destroy>", _on_destroy)
+
+    # ── Heavy DSP work ────────────────────────────────────────────────────
     def _heavy_work(path, low_cut, high_cut, order, result):
         import numpy as np
         import scipy.signal as sig
@@ -318,12 +318,12 @@ def launch(parent):
                 return arr
             return arr[:: max(1, len(arr) // MAX_PLOT_SAMPLES)]
 
-        # Keep full arrays for playback; downsampled only for plotting
-        result["audio_list"]    = [(f, sample_rate) for f in filtered_full]
-        result["plot_signals"]  = [_ds(f) for f in filtered_full]
-        result["time"]          = _ds(time_full)
+        result["audio_list"]   = [(f, sample_rate) for f in filtered_full]
+        result["plot_signals"] = [_ds(f) for f in filtered_full]
+        result["time"]         = _ds(time_full)
+        result["sample_rate"]  = sample_rate
 
-    # ── Apply button callback ─────────────────────────────────────────────
+    # ── Apply button ──────────────────────────────────────────────────────
     def apply_filters():
         from core.dsp_utils import style_axes
 
@@ -350,11 +350,8 @@ def launch(parent):
 
         placeholder.pack_forget()
         loading = tk.Label(
-            graph_frame,
-            text="⏳  Processing audio, please wait…",
-            font=("Helvetica", 13),
-            bg=BG_CARD,
-            fg="#00D4FF",
+            graph_frame, text="⏳  Processing audio, please wait…",
+            font=("Helvetica", 13), bg=BG_CARD, fg="#00D4FF",
         )
         loading.place(relx=0.5, rely=0.5, anchor="center")
         graph_frame.update_idletasks()
@@ -368,7 +365,7 @@ def launch(parent):
                 return
 
             fig, axes, cv = _ensure_canvas()
-            for idx, (ax, sig, title, color) in enumerate(zip(
+            for idx, (ax, sig_plot, title, color) in enumerate(zip(
                 axes, result["plot_signals"], PLOT_TITLES, PLOT_COLORS
             )):
                 ax.clear()
@@ -378,11 +375,14 @@ def launch(parent):
                     xlabel="Time (s)" if idx == len(axes) - 1 else "",
                     ylabel="Amp",
                 )
-                ax.plot(result["time"], sig, color=color, linewidth=0.6)
+                ax.plot(result["time"], sig_plot, color=color, linewidth=0.6)
 
             cv.draw_idle()
 
-            _build_playback_bar(result["audio_list"])
+            _build_playback_bar(
+                result["audio_list"],
+                result["sample_rate"]
+            )
 
         def _run():
             _heavy_work(path, low_cut, high_cut, order, result)
