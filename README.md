@@ -16,3 +16,15 @@ Criteria:
 - Functionality (Do all laboratories function as intended?)
 - Optimization (Program run time, load time, overall page transition/output "speed")
 - Creativity (GUI; neat, symmetrical, visually pleasing, etc.)
+
+
+Run this in the project terminal to compile into one main.exe file:
+pyinstaller --onefile --windowed --hidden-import=labs
+--hidden-import=labs.lab1_sampling --hidden-import=labs.lab2
+--hidden-import=labs.lab3_filters --hidden-import=labs.lab4_ztransform
+--hidden-import=labs.lab5_6_dft --hidden-import=labs.lab7_windowing
+--hidden-import=scipy --hidden-import=scipy.signal
+--hidden-import=sounddevice --hidden-import=soundfile
+--hidden-import=librosa --hidden-import=pydub
+--collect-all=numpy --collect-all=matplotlib
+main.py

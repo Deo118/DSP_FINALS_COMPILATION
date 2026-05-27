@@ -22,15 +22,13 @@ pyinstaller --noconfirm --clean --onefile --windowed `
   --collect-submodules core `
   --collect-all=numpy `
   --collect-all=matplotlib `
-<<<<<<< Updated upstream
-  main.py
-=======
   --collect-all=scipy `
   --collect-all=PIL `
   main.py
 
+
 Run to bypass bad path configurations and find your official Python installation:
-  py -m pyinstaller --noconfirm --clean --onefile --windowed `
+py -m pyinstaller --noconfirm --clean --onefile --windowed `
   --name "AjDDO" `
   --icon=assets/icon.ico `
   --hidden-import=labs `
@@ -60,4 +58,3 @@ Run to bypass bad path configurations and find your official Python installation
 if already compiled, run this first before commiting to github and/or running any of the above:
 Remove-Item -Recurse -Force build,dist -ErrorAction SilentlyContinue
 Remove-Item -Force *.spec -ErrorAction SilentlyContinue
->>>>>>> Stashed changes
