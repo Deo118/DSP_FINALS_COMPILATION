@@ -19,7 +19,7 @@ def launch(parent):
     shell = create_lab_body(
         parent,
         icon="⌇",
-        title="Window Functions & FFT",
+        title="Lab 7 — Window Functions & FFT",
         subtitle=(
             "Compare original, windowed, and FFT spectra "
             "for common window functions."

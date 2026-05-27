@@ -4,7 +4,6 @@ from config import *
 from data.labs_data import LABS
 
 from ui.lab_card import LabCard
-from ui.components.stat_card import StatCard
 from ui.components.section_bar import SectionBar
 
 
@@ -43,8 +42,8 @@ class DashboardView(tk.Frame):
         tk.Label(
             hero,
             text=(
-                "Select a laboratory module below "
-                "to launch it in a new window."
+                "Interactive DSP laboratory environment "
+                "for signal analysis and visualization."
             ),
             font=FONT_SUBTITLE,
             bg=BG_DARK,
@@ -59,41 +58,6 @@ class DashboardView(tk.Frame):
             pady=(12, 0)
         )
 
-        stats = tk.Frame(
-            self,
-            bg=BG_DARK
-        )
-
-        stats.pack(
-            fill="x",
-            padx=40,
-            pady=(20, 0)
-        )
-
-        StatCard(
-            stats,
-            "7",
-            "Labs Included"
-        ).pack(
-            side="left",
-            padx=(0, 12)
-        )
-
-        StatCard(
-            stats,
-            "8",
-            "Total Modules"
-        ).pack(
-            side="left",
-            padx=(0, 12)
-        )
-
-        StatCard(
-            stats,
-            "100%",
-            "Python-Based"
-        ).pack(side="left")
-
         cards = tk.Frame(
             self,
             bg=BG_DARK
@@ -103,7 +67,7 @@ class DashboardView(tk.Frame):
             fill="both",
             expand=True,
             padx=40,
-            pady=20
+            pady=24
         )
 
         for i in range(3):
